@@ -6,6 +6,7 @@ char *strncat(char *, const char *, size_t n);
 
 int fprintf(int, const char *, ...);
 
+int r ; 
 
 /*
 Implement a Non-standard itoa
