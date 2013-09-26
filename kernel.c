@@ -1,6 +1,6 @@
 #include "stm32f10x.h"
 #include "RTOSConfig.h"
-
+#include "clib.h"
 #include "syscall.h"
 
 #include <stddef.h>

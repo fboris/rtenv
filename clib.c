@@ -7,59 +7,9 @@
 
 //#pragma GCC diagnostic ignored "-pedantic"
 
-int strcmp(const char *a, const char *b)
-{
-#ifndef ENABLE_ASM_OPT
-	while(*a && (*a==*b))
-		++a, ++b;
-	return *a-*b;
-#else
-	__asm(
-        "strcmp_lop:                \n"
-        "   ldrb    r2, [r0],#1     \n"
-        "   ldrb    r3, [r1],#1     \n"
-        "   cmp     r2, #1          \n"
-        "   it      hi              \n"
-        "   cmphi   r2, r3          \n"
-        "   beq     strcmp_lop      \n"
-		"	sub     r0, r2, r3  	\n"
-        "   bx      lr              \n"
-		:::);
-#endif
-}
 
 
 
-size_t strlen(const char *s)
-{
-#ifndef ENABLE_ASM_OPT
-	int count=0;
-	while(*s++)
-		++count;
-	return count;
-#else
-	
-	__asm(
-	"	sub  r3, r0, #1			\n"
-        "strlen_loop:               \n"
-		"	ldrb r2, [r3, #1]!		\n"
-		"	cmp  r2, #0				\n"
-        "   bne  strlen_loop        \n"
-		"	sub  r0, r3, r0			\n"
-		"	bx   lr					\n"
-		:::
-	);
-#endif
-}
-
-#ifndef ENABLE_ASM_OPT
-void *memcpy(void * restrict dest, const void * restrict src, size_t n){
-	int i;
-	for(i=0; i<n; ++i)
-		*((unsigned char *)dest+i)=*((unsigned char *)src+i);
-	return dest;
-}
-#endif
 
 char *strncat(char *str1, const char *str2, size_t n){
 	int start=strlen(str1);
