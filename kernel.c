@@ -360,9 +360,29 @@ void serial_readwrite_task()
 /*
 parsing the command from user
 */
-void parse_command(char* str, int curr_char)
-{
+void  parse_command( int fdout, char* str, int curr_char)
+{	
+	int result;
+	if ( strcmp( str, "echo") == 0){
 	
+		char* temp_str;
+	}
+	else if( strcmp( str, "help") == 0){
+		
+		
+		char* temp_str = "This shell support some simple commands\r\n\0";
+		char* temp_str_2 = "echo\r\nhelp\r\nhello\r\nps\r\n\0";
+		
+		write( fdout, temp_str, strlen( temp_str)+1 );
+		write( fdout, temp_str_2, strlen( temp_str_2)+1 );
+	}
+	else if ( strcmp(str, "hello") == 0){	
+		char* temp_str = "Hi! How are you?\r\n\0";
+		write( fdout, temp_str, strlen( temp_str)+1 );
+		
+	}
+	else if ( strcmp(str, "ps") == 0){
+	}
 }
 /*
 User could interactively send some commands to
@@ -370,9 +390,10 @@ this shell task
 */
 void shell_task()
 {	
-	int fdout, fdin, curr_char, IsDone;
+	int fdout, fdin, curr_char, IsDone, we;
 	char ch[2], str[100];
 	ch[1] = '\0';
+
 	curr_char = 0;
 	fdout = mq_open("/tmp/mqueue/out", 0);
 	fdin = open("/dev/tty0/in", 0);
@@ -381,7 +402,7 @@ void shell_task()
 	while (1){
 		/*waiting user */
 		IsDone = 0;
-		write( fdout, "F.Shell$", 8);
+		write( fdout, "F.Shell$\0", 9);
 		do {
 			/*read a byte from buffer and send this byte back
 			to user*/
@@ -404,12 +425,12 @@ void shell_task()
 				}
 			}
 			else {
-
+				//Enter: excute the command
 				if (ch[0] == '\r'){	
 					
-					write(fdout, "\r\n", 3);
+					write(fdout, "\r\n\0", 3);
 					ch[curr_char+1]	= '\0';
-					parse_command(ch, curr_char);
+					parse_command(fdout, str, curr_char);
 					IsDone = -1;
 					curr_char = 0;	
 				}
