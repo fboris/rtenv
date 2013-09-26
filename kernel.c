@@ -357,19 +357,80 @@ void serial_readwrite_task()
 		write(fdout, str, curr_char+1+1);
 	}
 }
+/*
+parsing the command from user
+*/
+void parse_command(char* str, int curr_char)
+{
+	
+}
+/*
+User could interactively send some commands to
+this shell task
+*/
+void shell_task()
+{	
+	int fdout, fdin, curr_char, IsDone;
+	char ch[2], str[100];
+	ch[1] = '\0';
+	curr_char = 0;
+	fdout = mq_open("/tmp/mqueue/out", 0);
+	fdin = open("/dev/tty0/in", 0);
 
+	
+	while (1){
+		/*waiting user */
+		IsDone = 0;
+		write( fdout, "F.Shell$", 8);
+		do {
+			/*read a byte from buffer and send this byte back
+			to user*/
+			read(fdin, ch, 1);
+			
+			//check is control char or not
+			if ( (ch[0] >= 0x21) && (ch[0] <= 0x7e) ){
+				
+				write(fdout, ch, 2);//response user keying
+				
+				if( curr_char < 100 ){
+					str[curr_char] = ch[0];
+					curr_char++;
+				}
+				else{
+					char *s =  "\r\ncommand is too long! \r\n";
+					write( fdout, s, strlen(s));
+					curr_char = 0;
+					IsDone = -1;
+				}
+			}
+			else {
+
+				if (ch[0] == '\r'){	
+					
+					write(fdout, "\r\n", 3);
+					ch[curr_char+1]	= '\0';
+					parse_command(ch, curr_char);
+					IsDone = -1;
+					curr_char = 0;	
+				}
+			
+			}
+			
+		} while (!IsDone);
+	}
+}
 void first()
 {
 	setpriority(0, 0);
-
+	
 	if (!fork()) setpriority(0, 0), pathserver();
 	if (!fork()) setpriority(0, 0), serialout(USART2, USART2_IRQn);
 	if (!fork()) setpriority(0, 0), serialin(USART2, USART2_IRQn);
 	if (!fork()) rs232_xmit_msg_task();
-	if (!fork()) setpriority(0, PRIORITY_DEFAULT - 10), queue_str_task1();
-	if (!fork()) setpriority(0, PRIORITY_DEFAULT - 10), queue_str_task2();
-	if (!fork()) setpriority(0, PRIORITY_DEFAULT - 10), serial_readwrite_task();
-
+	//if (!fork()) setpriority(0, PRIORITY_DEFAULT - 10), queue_str_task1();
+	//if (!fork()) setpriority(0, PRIORITY_DEFAULT - 10), queue_str_task2();
+	//if (!fork()) setpriority(0, PRIORITY_DEFAULT - 10), serial_readwrite_task();
+	if (!fork()) setpriority(0, PRIORITY_DEFAULT - 10), shell_task();
 	setpriority(0, PRIORITY_LIMIT);
 
 	while(1);
