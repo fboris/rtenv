@@ -1,53 +1,7 @@
 #include "stm32f10x.h"
 #include "RTOSConfig.h"
-#include "clib.h"
 #include "syscall.h"
-
-#include <stddef.h>
-
-void *memcpy(void *dest, const void *src, size_t n);
-
-int strcmp(const char *a, const char *b) __attribute__ ((naked));
-int strcmp(const char *a, const char *b)
-{
-	asm(
-        "strcmp_lop:                \n"
-        "   ldrb    r2, [r0],#1     \n"
-        "   ldrb    r3, [r1],#1     \n"
-        "   cmp     r2, #1          \n"
-        "   it      hi              \n"
-        "   cmphi   r2, r3          \n"
-        "   beq     strcmp_lop      \n"
-		"	sub     r0, r2, r3  	\n"
-        "   bx      lr              \n"
-		:::
-	);
-}
-
-size_t strlen(const char *s) __attribute__ ((naked));
-size_t strlen(const char *s)
-{
-	asm(
-		"	sub  r3, r0, #1			\n"
-        "strlen_loop:               \n"
-		"	ldrb r2, [r3, #1]!		\n"
-		"	cmp  r2, #0				\n"
-        "   bne  strlen_loop        \n"
-		"	sub  r0, r3, r0			\n"
-		"	bx   lr					\n"
-		:::
-	);
-}
-
-void puts(char *s)
-{
-	while (*s) {
-		while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET)
-			/* wait */ ;
-		USART_SendData(USART2, *s);
-		s++;
-	}
-}
+#include "shell.h"
 
 #define STACK_SIZE 512 /* Size of task stacks in words */
 #define TASK_LIMIT 8  /* Max number of tasks we can handle */
@@ -358,6 +312,43 @@ void serial_readwrite_task()
 	}
 }
 /*
+test my key
+*/
+void test_control_key()
+{
+	int fdout, fdin, curr_char, IsDone, we;
+	char ch[2], str[10];
+	ch[1] = '\0';
+
+	curr_char = 0;
+	fdout = mq_open("/tmp/mqueue/out", 0);
+	fdin = open("/dev/tty0/in", 0);
+	while(1){
+		read( fdin, &ch[0], 1 );
+
+		if( ch[0] == 27){
+			read( fdin, &ch[0], 1);
+
+			if( ch[0] == '['){
+				read( fdin, &ch[0], 1);
+
+				if( ch[0] == 'A' || ch[0] == 'D'){
+
+					shell_puts( fdout,"I got direction key\r\n");
+				}
+
+
+
+			}
+
+		}
+		write( fdout, ch, 2);	
+	}
+
+
+}
+
+/*
 parsing the command from user
 */
 void  parse_command( int fdout, char* str, int curr_char)
@@ -369,16 +360,12 @@ void  parse_command( int fdout, char* str, int curr_char)
 	}
 	else if( strcmp( str, "help") == 0){
 		
+		shell_puts( fdout, "This shell support some simple commands\r\n\0");		
+		shell_puts( fdout,  "echo\r\nhelp\r\nhello\r\nps\r\n\0");
 		
-		char* temp_str = "This shell support some simple commands\r\n\0";
-		char* temp_str_2 = "echo\r\nhelp\r\nhello\r\nps\r\n\0";
-		
-		write( fdout, temp_str, strlen( temp_str)+1 );
-		write( fdout, temp_str_2, strlen( temp_str_2)+1 );
 	}
 	else if ( strcmp(str, "hello") == 0){	
-		char* temp_str = "Hi! How are you?\r\n\0";
-		write( fdout, temp_str, strlen( temp_str)+1 );
+		shell_puts( fdout, "Hi! How are you?\r\n\0");
 		
 	}
 	else if ( strcmp(str, "ps") == 0){
@@ -402,35 +389,38 @@ void shell_task()
 	while (1){
 		/*waiting user */
 		IsDone = 0;
-		write( fdout, "F.Shell$\0", 9);
+		//write( fdout, "F.Shell$\0", 9);
+		shell_puts( fdout, "F@Shell$");
+		
 		do {
 			/*read a byte from buffer and send this byte back
 			to user*/
-			read(fdin, ch, 1);
+			read(fdin, &ch[0], 1);
 			
 			//check is control char or not
 			if ( (ch[0] >= 0x21) && (ch[0] <= 0x7e) ){
 				
-				write(fdout, ch, 2);//response user keying
-				
+				//write(fdout, ch, 2);//response user keying
+				shell_puts( fdout, ch);
+
 				if( curr_char < 100 ){
 					str[curr_char] = ch[0];
 					curr_char++;
 				}
 				else{
-					char *s =  "\r\ncommand is too long! \r\n";
-					write( fdout, s, strlen(s));
+					shell_puts( fdout, "command is too long!\r\n\0");
 					curr_char = 0;
 					IsDone = -1;
 				}
 			}
 			else {
 				//Enter: excute the command
-				if (ch[0] == '\r'){	
+				if ( (ch[0] == '\r') || (ch[0] == '\n') ){	
 					
-					write(fdout, "\r\n\0", 3);
-					ch[curr_char+1]	= '\0';
-					parse_command(fdout, str, curr_char);
+					//write(fdout, "\r\n\0", 3);
+					shell_puts( fdout, "\r\n\0");
+					str[curr_char+1] = '\0';
+					//parse_command(fdout, str, curr_char);
 					IsDone = -1;
 					curr_char = 0;	
 				}
@@ -449,6 +439,9 @@ void first()
 	if (!fork()) setpriority(0, 0), serialin(USART2, USART2_IRQn);
 	if (!fork()) rs232_xmit_msg_task();
 	if (!fork()) setpriority(0, PRIORITY_DEFAULT - 10), shell_task();
+	
+	//if (!fork()) setpriority(0, PRIORITY_DEFAULT - 10),  test_control_key();
+ 
 	setpriority(0, PRIORITY_LIMIT);
 
 	while(1);
