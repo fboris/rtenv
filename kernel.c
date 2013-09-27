@@ -332,7 +332,8 @@ void test_control_key()
 			if( ch[0] == '['){
 				read( fdin, &ch[0], 1);
 
-				if( ch[0] == 'A' || ch[0] == 'D'){
+				if( (ch[0] == 'A') || (ch[0] == 'D') ||
+					(ch[0] == 'B') || ch[0] == 'C'){
 
 					shell_puts( fdout,"I got direction key\r\n");
 				}
@@ -347,18 +348,73 @@ void test_control_key()
 
 
 }
+/*spilt msg which 
 
+*/
+int split_msg( char* str, char* substring_1, char* substring_2)
+{
+	int IsFound = 0;//
+	int length = strlen(str);
+	int substring_1_length = 0;
+	int i;
+	for (  i = 0; i < length; i++)
+	{
+		if ( str[i] == ' '){
+			int j;
+			for( j = 0; j < i; j++){
+				
+				substring_1[j] = str[j];
+			}
+
+			substring_1[i] = '\0';
+			IsFound = 1;
+			substring_1_length = i;
+		}
+		/*
+		check the end of msg
+		*/
+		if ( str[i+1] == '\0'){
+			/*
+			check found space or not
+			*/
+			if ( IsFound == 1){
+				int k;
+				for ( k = substring_1_length ; k <= i; k++){
+					
+					substring_2[ k - substring_1_length ] = str[ k + 1 ]; 
+				}
+				return 1;//get the command and sub_string 
+			}
+			else {
+				
+				return 0;//did not get anything, return failure msg.
+			}
+		}
+	}
+	// If str doesn't have any '\0', stop
+	return 0;
+}
 /*
 parsing the command from user
 */
 void  parse_command( int fdout, char* str, int curr_char)
 {	
 	int result;
-	if ( strcmp( str, "echo") == 0){
-	
-		char* temp_str;
+	char substring_1[100];
+	char substring_2[100];
+	/*
+	command type: xxx yyyy
+	*/
+	if( split_msg( &str[0],&substring_1[0], &substring_2[0] ) == 1){
+		
+		if( strcmp( &substring_1[0],"echo") == 0 )
+		{
+			shell_puts( fdout, &substring_2[0]);
+			shell_puts( fdout, "\r\n\0");
+		}
+
 	}
-	else if( strcmp( str, "help") == 0){
+	else if ( strcmp( str, "help") == 0){
 		
 		shell_puts( fdout, "This shell support some simple commands\r\n\0");		
 		shell_puts( fdout,  "echo\r\nhelp\r\nhello\r\nps\r\n\0");
@@ -369,6 +425,11 @@ void  parse_command( int fdout, char* str, int curr_char)
 		
 	}
 	else if ( strcmp(str, "ps") == 0){
+	
+	}
+	else{
+		if( curr_char != 0)
+			shell_puts( fdout, "command not found!\r\n\0");
 	}
 }
 /*
@@ -377,7 +438,7 @@ this shell task
 */
 void shell_task()
 {	
-	int fdout, fdin, curr_char, IsDone, we;
+	int fdout, fdin, curr_char, IsDone;
 	char ch[2], str[100];
 	ch[1] = '\0';
 
@@ -398,7 +459,7 @@ void shell_task()
 			read(fdin, &ch[0], 1);
 			
 			//check is control char or not
-			if ( (ch[0] >= 0x21) && (ch[0] <= 0x7e) ){
+			if ( (ch[0] >= 0x20) && (ch[0] <= 0x7e) ){
 				
 				//write(fdout, ch, 2);//response user keying
 				shell_puts( fdout, ch);
@@ -408,7 +469,7 @@ void shell_task()
 					curr_char++;
 				}
 				else{
-					shell_puts( fdout, "command is too long!\r\n\0");
+					shell_puts( fdout, "\r\ncommand is too long!\r\n\0");
 					curr_char = 0;
 					IsDone = -1;
 				}
@@ -419,8 +480,8 @@ void shell_task()
 					
 					//write(fdout, "\r\n\0", 3);
 					shell_puts( fdout, "\r\n\0");
-					str[curr_char+1] = '\0';
-					//parse_command(fdout, str, curr_char);
+					str[curr_char] = '\0';
+					parse_command(fdout, str, curr_char);
 					IsDone = -1;
 					curr_char = 0;	
 				}
