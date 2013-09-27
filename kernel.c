@@ -58,7 +58,33 @@ struct task_control_block {
     struct task_control_block **prev;
     struct task_control_block  *next;
 };
+/*
+task_info & get_task_status were got from zzz0072
+*/
+struct task_info {
+    struct task_control_block *tasks;
+    int *task_amount;
+};
 
+static struct task_info g_task_info;
+
+static char *get_task_status(int status)
+{
+    switch (status) {
+        case TASK_READY:
+            return "Ready   ";
+        case TASK_WAIT_READ:
+            return "Wait read";
+        case TASK_WAIT_WRITE:
+            return "Wait write";
+        case TASK_WAIT_INTR:
+            return "Wait intr";
+        case TASK_WAIT_TIME:
+            return "Wait time";
+        default:
+            return "Unknown Status";
+    }
+}
 /* 
  * pathserver assumes that all files are FIFOs that were registered
  * with mkfifo.  It also assumes a global tables of FDs shared by all
@@ -348,7 +374,7 @@ void test_control_key()
 
 
 }
-/*spilt msg which 
+/*spilt msg which incude char space 
 
 */
 int split_msg( char* str, char* substring_1, char* substring_2)
@@ -425,8 +451,15 @@ void  parse_command( int fdout, char* str, int curr_char)
 		
 	}
 	else if ( strcmp(str, "ps") == 0){
-	
-	}
+		int i;
+		shell_puts( fdout, "List process\r\n");
+    		for (i = 0; i < *(g_task_info.task_amount); i++) {
+      			 my_printf("\rPID: %d\tPriority: %d\tStatus: %s\r\n",
+                   	 g_task_info.tasks[i].pid,
+                   	 g_task_info.tasks[i].priority,
+                   	 get_task_status(g_task_info.tasks[i].status));
+		}
+   	 }
 	else{
 		if( curr_char != 0)
 			shell_puts( fdout, "command not found!\r\n\0");
@@ -823,6 +856,9 @@ int main()
 	tasks[task_count].priority = PRIORITY_DEFAULT;
 	task_count++;
 
+    	/* dirty global tasks */
+    	g_task_info.tasks = tasks;
+    	g_task_info.task_amount = &task_count;
 	/* Initialize all pipes */
 	for (i = 0; i < PIPE_LIMIT; i++)
 		pipes[i].start = pipes[i].end = 0;

@@ -13,7 +13,7 @@ size_t strlen(const char *s) __attribute__ ((naked));
 size_t strlen(const char *s);
 void puts(char *s);
 void shell_puts(int fdout,char *s);
-
-
+void my_printf(const char *fmt_str, ...);
+void my_puts(char *ms);
 #endif
 
