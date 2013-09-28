@@ -374,7 +374,11 @@ void test_control_key()
 
 
 }
-/*spilt msg which incude char space 
+/*split msg:
+
+this function can split msg which has space.
+ex: xxx yyyy
+It will put these two sub-string back to buffer.(If it parses successful)
 
 */
 int split_msg( char* str, char* substring_1, char* substring_2)
