@@ -65,7 +65,11 @@ struct task_info {
     struct task_control_block *tasks;
     int *task_amount;
 };
-
+/*enum ascii key action*/
+enum key_action{
+	SPACE = 0x20,
+	DEL = 0x7F
+};
 static struct task_info g_task_info;
 
 static char *get_task_status(int status)
@@ -482,7 +486,6 @@ void shell_task()
 	curr_char = 0;
 	fdout = mq_open("/tmp/mqueue/out", 0);
 	fdin = open("/dev/tty0/in", 0);
-
 	
 	while (1){
 		/*waiting user */
@@ -496,7 +499,7 @@ void shell_task()
 			read(fdin, &ch[0], 1);
 			
 			//check is control char or not
-			if ( (ch[0] >= 0x20) && (ch[0] <= 0x7e) ){
+			if ( (ch[0] >= SPACE ) && (ch[0] <= DEL) ){
 				
 				//write(fdout, ch, 2);//response user keying
 				shell_puts( fdout, ch);
@@ -943,7 +946,7 @@ int main()
 					tasks[who].priority = value;
 				else if (who == 0)
 					tasks[current_task].priority = value;
-				else {
+			else {
 					tasks[current_task].stack->r0 = -1;
 					break;
 				}
