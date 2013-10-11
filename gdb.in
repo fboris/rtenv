@@ -1,0 +1,5 @@
+set logging on
+file main.elf
+target remote :3333
+b kernel.c:499
+c
